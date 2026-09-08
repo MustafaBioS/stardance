@@ -1,8 +1,12 @@
 class Admin::Certification::YswsController < Admin::Certification::ApplicationController
   FILTER_SESSION_KEY = :admin_ysws_review_filters
+  BATCH_SESSION_KEY  = :admin_ysws_review_batch
 
   def index
     authorize ::Certification::Ysws
+
+    session.delete(BATCH_SESSION_KEY) unless turbo_frame_request?
+
     if params[:reset_filters].present?
       session.delete(FILTER_SESSION_KEY)
       redirect_to admin_certification_ysws_reviews_path
@@ -78,11 +82,48 @@ class Admin::Certification::YswsController < Admin::Certification::ApplicationCo
     end
   end
 
+  def start_batch
+    authorize ::Certification::Ysws, :start_batch?
+
+    requested = Array(params[:review_ids]).map(&:to_i).uniq.select(&:positive?)
+    available = claimable_review_ids(requested)
+
+    if available.empty?
+      session.delete(BATCH_SESSION_KEY)
+      redirect_to admin_certification_ysws_reviews_path,
+                  alert: "None of the reviews you picked are still available."
+      return
+    end
+
+    session[BATCH_SESSION_KEY] = { "remaining" => available, "total" => available.size }
+
+    skipped = requested - available
+    Rails.logger.info "[YSWS#start_batch] user=#{current_user.id} reviews=#{available.inspect} " \
+                      "skipped=#{skipped.inspect}"
+
+    redirect_to admin_certification_ysws_review_path(available.first)
+  end
+
+  def skip
+    @review = ::Certification::Ysws.find(params[:id])
+    authorize @review, :show?
+
+    @review.release_claim!
+    destination = advance_batch!(@review)
+
+    Rails.logger.info "[YSWS#skip] user=#{current_user.id} review=#{@review.id} " \
+                      "released claim, next=#{destination}"
+
+    redirect_to destination
+  end
+
   def show
     @review = ::Certification::Ysws
       .includes(:project, :user, :reviewer, :ship_cert, :mac_analysis, devlog_reviews: { post_devlog: [ :post, :attachments_attachments ] })
       .find(params[:id])
     authorize @review
+
+    @batch_progress = batch_progress_for(@review)
 
     if @review.project.nil?
       redirect_to admin_certification_ysws_reviews_path, alert: "Review ##{@review.id} has no associated project."
@@ -251,6 +292,41 @@ class Admin::Certification::YswsController < Admin::Certification::ApplicationCo
       params.key?(:with_integrity)
   end
 
+  def claimable_review_ids(ids)
+    return [] if ids.empty?
+
+    ids & ::Certification::Ysws.pending
+                               .unclaimed_or_claimed_by(current_user)
+                               .where(id: ids)
+                               .pluck(:id)
+  end
+
+  def advance_batch!(review)
+    batch     = session[BATCH_SESSION_KEY].to_h
+    remaining = Array(batch["remaining"]).map(&:to_i)
+
+    return admin_certification_ysws_reviews_path unless remaining.include?(review.id)
+
+    remaining = claimable_review_ids(remaining - [ review.id ])
+
+    if remaining.empty?
+      session.delete(BATCH_SESSION_KEY)
+      return admin_certification_ysws_reviews_path
+    end
+
+    session[BATCH_SESSION_KEY] = { "remaining" => remaining, "total" => batch["total"].to_i }
+    admin_certification_ysws_review_path(remaining.first)
+  end
+
+  def batch_progress_for(review)
+    batch     = session[BATCH_SESSION_KEY].to_h
+    remaining = Array(batch["remaining"]).map(&:to_i)
+    return nil unless remaining.include?(review.id)
+
+    total = batch["total"].to_i
+    { position: total - remaining.size + 1, total: total }
+  end
+
 
   # Fetches all commits in the review period and buckets them by devlog ID.
   # Returns { devlog_id (integer) => [commit_hash, ...] }.
@@ -398,7 +474,7 @@ class Admin::Certification::YswsController < Admin::Certification::ApplicationCo
     render json: {
       success: true,
       message: "Review completed! Syncing to Airtable in the background...",
-      redirect_url: admin_certification_ysws_reviews_path
+      redirect_url: advance_batch!(@review)
     }, status: :ok
   rescue StandardError => e
     skip_authorization unless pundit_policy_authorized?
@@ -508,7 +584,7 @@ class Admin::Certification::YswsController < Admin::Certification::ApplicationCo
     render json: {
       success: true,
       message: "Project returned to ship certification queue.",
-      redirect_url: admin_certification_ysws_reviews_path
+      redirect_url: advance_batch!(@review)
     }, status: :ok
   rescue StandardError => e
     Sentry.capture_exception(e, tags: { category: "certification.ysws" }, extra: { ysws_review_id: params[:id], user_id: current_user&.id })

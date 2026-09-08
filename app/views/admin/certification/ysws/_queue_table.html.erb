@@ -5,6 +5,11 @@
       data: { certification__ysws__queue_search_target: "frame",
               controller: "certification--ysws--select-projects" } do %>
   <% if @reviews.any? %>
+
+    <%= form_with url: admin_certification_ysws_review_batch_path, method: :post,
+                  data: { certification__ysws__select_projects_target: "form" } do %>
+    <% end %>
+
     <div class="ysws-queue__summary" role="status" aria-live="polite">
       <div class="ysws-queue__summary-total">
         <span class="ysws-queue__summary-label">
@@ -14,20 +19,21 @@
       </div>
 
       <div class="ysws-queue__select-actions">
-        <button type="button" class="ysws-queue__select-btn"
-                data-certification--ysws--select-projects-target="start"
-                data-action="certification--ysws--select-projects#start">
-          Select
-        </button>
 
-        <button type="button" hidden
+        <button type="button" disabled
                 class="ysws-queue__select-btn ysws-queue__select-btn--confirm"
                 data-certification--ysws--select-projects-target="confirm"
                 data-action="certification--ysws--select-projects#confirm">
           Confirm
         </button>
 
-        <button type="button" hidden
+        <button type="button" class="ysws-queue__select-btn"
+                data-certification--ysws--select-projects-target="start"
+                data-action="certification--ysws--select-projects#start">
+          Select
+        </button>
+
+        <button type="button" disabled
                 class="ysws-queue__select-btn ysws-queue__select-btn--cancel"
                 data-certification--ysws--select-projects-target="cancel"
                 data-action="certification--ysws--select-projects#cancel">
@@ -83,6 +89,7 @@
         <tbody>
           <% @reviews.each do |review| %>
             <tr class="<%= "ysws-queue__row--claimed" if review.claimed_by?(current_user) %>"
+                data-review-id="<%= review.id %>"
                 data-certification--ysws--select-projects-target="row"
                 data-action="click->certification--ysws--select-projects#toggleRow">
               <td data-label="ID">#<%= review.id %></td>

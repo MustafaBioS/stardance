@@ -87,6 +87,12 @@
     &:hover {
       background: var(--color-brand-mint);
     }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: var(--color-brand-mint);
+    }
   }
 
   & &__select-btn--cancel {
@@ -95,6 +101,12 @@
 
     &:hover {
       background: var(--color-overlay-light-soft);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: transparent;
     }
   }
 
@@ -118,6 +130,7 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
+
   }
 
   // Checkbox filters read as a single row rather than the stacked
@@ -926,6 +939,22 @@ body:has(.certification-ysws) {
   .review-detail-header {
     margin-bottom: var(--space-xl);
 
+
+    .ysws-batch-progress {
+      display: inline-block;
+      margin-left: var(--space-s);
+      margin-right: var(--space-s);
+      padding: var(--space-xs) var(--space-s);
+      border-radius: 999px;
+      background: var(--color-brand-blue-soft);
+      color: var(--color-brand-blue);
+      font-size: var(--font-size-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
     .header-content {
       display: flex;
       align-items: flex-start;
@@ -984,6 +1013,12 @@ body:has(.certification-ysws) {
 
     &__undo-form {
       margin: 0;
+    }
+
+    &__skip-form {
+      display: inline-block;
+      margin: 0;
+      vertical-align: middle;
     }
 
     &__unclaim-form {

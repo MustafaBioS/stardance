@@ -7,6 +7,20 @@
   <div class="review-detail-header">
     <%= link_to "← back", admin_certification_ysws_reviews_path, class: "btn-secondary slim", "aria-label": "Back to review queue" %>
 
+    <% if @batch_progress %>
+      <span class="ysws-batch-progress" role="status" aria-live="polite">
+        Selected batch — <%= @batch_progress[:position] %> of <%= @batch_progress[:total] %>
+      </span>
+
+      <%= button_to "next →",
+                    admin_certification_skip_ysws_review_path(@review),
+                    method: :post,
+                    class: "btn-secondary slim",
+                    form: { class: "review-detail-header__skip-form" },
+                    "aria-label": "Next project in batch" %>
+
+    <% end %>
+
     <div class="header-content">
       <div class="header-left">
         <div class="ysws-title-row">

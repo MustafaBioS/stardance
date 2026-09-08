@@ -19,6 +19,10 @@ class Admin::Certification::YswsPolicy < ApplicationPolicy
     index?
   end
 
+  def start_batch?
+    index?
+  end
+
   # Reversing a decided review is destructive and admin-only: guardians of
   # integrity can review, but cannot undo a completed review. Returned reviews
   # are out of scope — #return_to_ship_cert also opens a recert
