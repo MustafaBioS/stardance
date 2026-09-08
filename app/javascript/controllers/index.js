@@ -139,6 +139,12 @@ application.register(
   Certification__Ysws__ReviewerChartController,
 );
 
+import Certification__Ysws__SelectProjectsController from "./certification/ysws/select_projects_controller";
+application.register(
+  "certification--ysws--select-projects",
+  Certification__Ysws__SelectProjectsController,
+);
+
 import CommandPaletteController from "./command_palette_controller";
 application.register("command-palette", CommandPaletteController);
 

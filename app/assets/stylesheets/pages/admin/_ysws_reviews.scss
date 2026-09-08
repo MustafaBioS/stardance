@@ -50,6 +50,54 @@
     font-weight: 700;
   }
 
+  & &__select-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  & &__select-btn {
+    padding: 3px 16px;
+    border: 2px solid var(--color-brand-blue);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-brand-blue);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-s);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-brand-blue-soft);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-brand-highlight);
+      outline-offset: 2px;
+    }
+  }
+
+  & &__select-btn--confirm {
+    border-color: var(--color-brand-mint);
+    background: var(--color-brand-mint);
+    color: #000;
+
+    &:hover {
+      background: var(--color-brand-mint);
+    }
+  }
+
+  & &__select-btn--cancel {
+    border-color: var(--color-set-1-fg-secondary);
+    color: var(--color-set-1-fg-secondary);
+
+    &:hover {
+      background: var(--color-overlay-light-soft);
+    }
+  }
+
   // Project-type filter. Single set-1 control above the queue.
   & &__filters {
     display: flex;
@@ -342,6 +390,19 @@
     }
   }
 
+  & &__row--selected td {
+    @media (min-width: 961px) {
+      background: var(--color-brand-blue-soft);
+    }
+  }
+
+  & &__table-container--selecting {
+    tbody tr {
+      cursor: pointer;
+      user-select: none;
+    }
+  }
+
   & &__table-container {
     @media (min-width: 961px) {
       background: var(--color-set-1-bg);
@@ -397,6 +458,11 @@
         &.ysws-queue__row--claimed {
           border-color: var(--color-brand-yellow);
         }
+      }
+
+      tbody tr.ysws-queue__row--selected {
+        background: var(--color-brand-blue-soft);
+        border-color: var(--color-brand-blue);
       }
 
       td {
