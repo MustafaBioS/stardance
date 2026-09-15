@@ -59,7 +59,7 @@ class Admin::Certification::YswsController < Admin::Certification::ApplicationCo
     scope =
       case @sort
       when "length" then scope.order(Arel.sql("certification_ysws_reviews.original_minutes #{@dir}"))
-      when "todo"   then scope.order(Arel.sql("todo_devlog_count #{@dir}")) 
+      when "todo"   then scope.order(Arel.sql("todo_devlog_count #{@dir}"))
       when "age"    then scope.order(Arel.sql("certification_ysws_reviews.created_at #{@dir}"))
       else               scope.order(created_at: default_dir)
       end
