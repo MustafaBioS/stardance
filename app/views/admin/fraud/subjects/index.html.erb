@@ -1,6 +1,6 @@
 <% content_for :title, "Fraud Review Queue" %>
 
-<main class="fraud-queue" role="main">
+<main class="fraud-queue" role="main" data-controller="fraud-speedrun">
   <%= render HeadingComponent.new(title: "Fraud Review Queue", tone: :blue, size: :full) %>
 
   <% if @total_subjects.zero? %>
@@ -8,10 +8,18 @@
       <p>Nobody is waiting on a fraud verdict.</p>
     </div>
   <% else %>
-    <p class="fraud-queue__summary" role="status" aria-live="polite">
-      <span class="fraud-queue__summary-count"><%= @total_subjects %></span>
-      <span class="fraud-queue__summary-label">people waiting, worst first</span>
-    </p>
+    <div class="fraud-queue__header">
+      <p class="fraud-queue__summary" role="status" aria-live="polite">
+        <span class="fraud-queue__summary-count"><%= @total_subjects %></span>
+        <span class="fraud-queue__summary-label">people waiting, worst first</span>
+      </p>
+
+      <label class="fraud-queue__speedrun">
+        <input type="checkbox" role="switch" class="fraud-queue__speedrun-input"
+               data-fraud-speedrun-target="toggle" data-action="fraud-speedrun#toggle">
+        Speedrun
+      </label>
+    </div>
 
     <ol class="fraud-queue__list">
       <% @subjects.each do |subject| %>
@@ -19,8 +27,11 @@
         <li class="fraud-queue__item">
           <%= link_to admin_fraud_subject_path(subject.user_id), class: "fraud-subject-card" do %>
             <span class="fraud-subject-card__identity">
-              <span class="fraud-subject-card__name"><%= user.display_name %></span>
-              <span class="fraud-subject-card__id">#<%= user.id %></span>
+              <%= image_tag user.avatar, alt: "", class: "fraud-subject-card__avatar", loading: "lazy" %>
+              <span class="fraud-subject-card__identity-copy">
+                <span class="fraud-subject-card__name"><%= user.display_name %></span>
+                <span class="fraud-subject-card__id">#<%= user.id %></span>
+              </span>
             </span>
 
             <span class="fraud-subject-card__counts">

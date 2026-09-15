@@ -26,6 +26,7 @@
 #  assigned_to_user_id                :bigint
 #  fraud_payout_line_id               :bigint
 #  fraud_related_project_id           :bigint
+#  fraud_review_payout_id             :bigint
 #  fulfillment_payout_line_id         :bigint
 #  parent_order_id                    :bigint
 #  shop_card_grant_id                 :bigint
@@ -41,6 +42,7 @@
 #  idx_shop_orders_user_item_state                  (user_id,shop_item_id,aasm_state)
 #  idx_shop_orders_user_item_unique                 (user_id,shop_item_id)
 #  index_shop_orders_on_assigned_to_user_id         (assigned_to_user_id)
+#  index_shop_orders_on_fraud_review_payout_id      (fraud_review_payout_id)
 #  index_shop_orders_on_fulfillment_payout_line_id  (fulfillment_payout_line_id)
 #  index_shop_orders_on_parent_order_id             (parent_order_id)
 #  index_shop_orders_on_region                      (region)
@@ -52,6 +54,7 @@
 # Foreign Keys
 #
 #  fk_rails_...  (assigned_to_user_id => users.id) ON DELETE => nullify
+#  fk_rails_...  (fraud_review_payout_id => fraud_review_payouts.id)
 #  fk_rails_...  (fulfillment_payout_line_id => fulfillment_payout_lines.id)
 #  fk_rails_...  (parent_order_id => shop_orders.id)
 #  fk_rails_...  (shop_item_id => shop_items.id)
@@ -77,6 +80,7 @@ class ShopOrder < ApplicationRecord
   has_one :mission_submission, class_name: "Mission::Submission", inverse_of: :shop_order
   belongs_to :warehouse_package, class_name: "ShopWarehousePackage", optional: true
   belongs_to :assigned_to_user, class_name: "User", optional: true
+  belongs_to :fraud_review_payout, optional: true, inverse_of: :shop_orders
   belongs_to :fulfillment_payout_line, optional: true
   belongs_to :fraud_related_project, class_name: "Project", optional: true, foreign_key: :fraud_related_project_id, inverse_of: false
 
@@ -133,7 +137,15 @@ class ShopOrder < ApplicationRecord
   before_create :freeze_item_price
   before_create :set_region_from_address
   after_commit :notify_user_of_status_change, if: :saved_change_to_aasm_state?
+  after_commit :schedule_hold_release, if: :placed_on_hold?
 
+  HOLD_DURATION = 7.days
+
+  scope :expired_holds, ->(now = Time.current) {
+    cutoff = now - HOLD_DURATION
+    where(aasm_state: "on_hold")
+      .where("on_hold_at <= :cutoff OR (on_hold_at IS NULL AND updated_at <= :cutoff)", cutoff: cutoff)
+  }
   scope :worth_counting, -> { where.not(aasm_state: %w[rejected refunded]) }
   scope :real, -> { without_item_type("ShopItem::FreeStickers") }
   scope :manually_fulfilled, -> { joins(:shop_item).merge(ShopItem.where(type: ShopItem::MANUAL_FULFILLMENT_TYPES)) }
@@ -278,6 +290,17 @@ class ShopOrder < ApplicationRecord
         create_refund_payout
       end
     end
+  end
+
+  def hold_expires_at
+    return unless on_hold?
+
+    (on_hold_at || updated_at) + HOLD_DURATION
+  end
+
+  def hold_expired?(now = Time.current)
+    expiration = hold_expires_at
+    expiration.present? && expiration <= now
   end
 
   def digital?
@@ -439,6 +462,15 @@ class ShopOrder < ApplicationRecord
   end
 
   private
+
+  def placed_on_hold?
+    saved_change_to_aasm_state? && on_hold?
+  end
+
+  def schedule_hold_release
+    expiration = hold_expires_at
+    Shop::ReleaseExpiredOrderHoldsJob.set(wait_until: expiration).perform_later(expiration)
+  end
 
   def freeze_item_price
     return unless shop_item
